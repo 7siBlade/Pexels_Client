@@ -47,7 +47,7 @@ class _LoginPage extends State<LoginPage> {
                       errorBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Color(0xFFBA1A1A)))),
                   validator: Validation().validateEmail,
-                  enabled: !_isLoading, // Блокировка поля
+                  enabled: !_isLoading,
                 ),
               ),
               Padding(
@@ -62,7 +62,7 @@ class _LoginPage extends State<LoginPage> {
                       errorBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Color(0xFFBA1A1A)))),
                   validator: Validation().validatePassword,
-                  enabled: !_isLoading, // Блокировка поля
+                  enabled: !_isLoading,
                 ),
               ),
               Padding(
@@ -75,8 +75,7 @@ class _LoginPage extends State<LoginPage> {
                           : () async {
                               if (_formKey.currentState!.validate()) {
                                 setState(() {
-                                  _isLoading =
-                                      true; // Включаем индикатор загрузки
+                                  _isLoading = true;
                                 });
                                 try {
                                   final AuthResponse res =
@@ -84,6 +83,7 @@ class _LoginPage extends State<LoginPage> {
                                     email: _emailController.text,
                                     password: _passwordController.text,
                                   );
+                                  Navigator.of(context).pushNamed("/main");
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                         content: Text('Login successful!')),
@@ -102,8 +102,7 @@ class _LoginPage extends State<LoginPage> {
                                   );
                                 } finally {
                                   setState(() {
-                                    _isLoading =
-                                        false; // Выключаем индикатор загрузки
+                                    _isLoading = false;
                                   });
                                 }
                               }
