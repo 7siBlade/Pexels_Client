@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:test_task/repositories/pexels_repository.dart';
-
 import 'models/pexels.dart';
+import 'models/section.dart';
+import 'models/user.dart';
+import 'repositories/randon_user_repository.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -12,15 +15,26 @@ class MainPage extends StatefulWidget {
 
 class _MainPage extends State<MainPage> {
   List<PexelsModel>? _photosFuture;
-  List<Section>? _groupedPhotos;
+  List<SectionModel>? _groupedPhotos;
   String _searchQuery = '';
   bool _isSearching = false;
+  UserRepository userRepository = UserRepository();
+  UserModel? user;
+  bool _isLoading = false;
 
   TextEditingController _searchController = TextEditingController();
+  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
+    _loadUser();
     _loadPexels();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == 0 && !_isLoading) {
+        _loadUser();
+        _loadPexels();
+      }
+    });
     super.initState();
   }
 
@@ -76,54 +90,112 @@ class _MainPage extends State<MainPage> {
         ],
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: const <Widget>[
-            DrawerHeader(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Profile',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Row(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 30,
-                        backgroundImage: NetworkImage(
-                          'https://example.com/avatar.jpg',
+                      const Text(
+                        'Profile',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          Text(
-                            'User name',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                          CircleAvatar(
+                            radius: 30,
+                            child: ClipOval(
+                              child: Image.network(
+                                user?.photo ?? '',
+                                fit: BoxFit.cover,
+                                loadingBuilder: (BuildContext context,
+                                    Widget child,
+                                    ImageChunkEvent? loadingProgress) {
+                                  if (loadingProgress == null) {
+                                    return child;
+                                  } else {
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress
+                                                    .expectedTotalBytes !=
+                                                null
+                                            ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                (loadingProgress
+                                                        .expectedTotalBytes ??
+                                                    1)
+                                            : null,
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
                             ),
                           ),
-                          Text(
-                            'example@email.com',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user?.userName ?? 'Loading...',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  user?.email ?? 'Loading...',
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ],
                   ),
-                ],
+                ),
+              ],
+            ),
+            GestureDetector(
+              onTap: () {
+                _showLogoutDialog(context);
+              },
+              child: const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 0, 40),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Log out',
+                      style: TextStyle(
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -132,8 +204,14 @@ class _MainPage extends State<MainPage> {
       body: (_photosFuture == null)
           ? const Center(child: CircularProgressIndicator())
           : _groupedPhotos!.isEmpty
-              ? Center(child: Text('No items found'))
+              ? Center(
+                  child: Text(
+                    'No items found',
+                    style: TextStyle(fontSize: 22, fontFamily: "Roboto"),
+                  ),
+                )
               : ListView.builder(
+                  controller: _scrollController,
                   itemCount: _groupedPhotos!.length,
                   itemBuilder: (context, index) {
                     final section = _groupedPhotos![index];
@@ -141,27 +219,54 @@ class _MainPage extends State<MainPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.only(left: 10),
                           child: Text(
                             section.letter,
                             style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color.fromARGB(254, 0, 97, 166)),
                           ),
                         ),
                         ...section.photos.map((photo) {
-                          return ListTile(
-                            contentPadding: EdgeInsets.all(8.0),
-                            leading: Image.network(
-                              photo.url,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 8.0),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border:
+                                    Border.all(color: Colors.grey, width: 1),
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.all(8.0),
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(
+                                    imageUrl: photo.url,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => const Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.0),
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        const Icon(
+                                      Icons.error,
+                                      size: 20,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(photo.namePhotographer),
+                                subtitle: Text(photo.description),
+                              ),
                             ),
-                            title: Text(photo.namePhotographer),
-                            subtitle: Text(photo.description),
-                            onTap: () {},
                           );
                         }).toList(),
                       ],
@@ -171,16 +276,26 @@ class _MainPage extends State<MainPage> {
     );
   }
 
+  Future<void> _loadUser() async {
+    user = await userRepository.getUser();
+    setState(() {});
+  }
+
   Future<void> _loadPexels() async {
+    setState(() {
+      _isLoading = true; // Показываем индикатор загрузки
+    });
     _photosFuture = await PexelsRepository().getPexels();
     _photosFuture
         ?.sort((a, b) => a.namePhotographer.compareTo(b.namePhotographer));
 
     _groupedPhotos = _groupPhotos(_photosFuture!);
-    setState(() {});
+    setState(() {
+      _isLoading = false;
+    });
   }
 
-  List<Section> _groupPhotos(List<PexelsModel> photos) {
+  List<SectionModel> _groupPhotos(List<PexelsModel> photos) {
     Map<String, List<PexelsModel>> grouped = {};
 
     for (var photo in photos) {
@@ -192,7 +307,7 @@ class _MainPage extends State<MainPage> {
     }
 
     return grouped.entries
-        .map((e) => Section(letter: e.key, photos: e.value))
+        .map((e) => SectionModel(letter: e.key, photos: e.value))
         .toList()
       ..sort((a, b) => a.letter.compareTo(b.letter));
   }
@@ -210,11 +325,30 @@ class _MainPage extends State<MainPage> {
       _groupedPhotos = _groupPhotos(filteredPhotos);
     }
   }
-}
 
-class Section {
-  final String letter;
-  final List<PexelsModel> photos;
-
-  Section({required this.letter, required this.photos});
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Log out'),
+          content: Text('Are you sure you want to logout?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Log out'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
