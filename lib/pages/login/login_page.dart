@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:test_task/main.dart';
-import 'package:test_task/validation.dart';
+import 'package:test_task/pages/login/validation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

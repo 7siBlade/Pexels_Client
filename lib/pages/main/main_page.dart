@@ -1,10 +1,12 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:test_task/repositories/pexels_repository.dart';
-import 'models/pexels.dart';
-import 'models/section.dart';
-import 'models/user.dart';
-import 'repositories/randon_user_repository.dart';
+import '../../models/pexels.dart';
+import '../../models/section.dart';
+import '../../models/user.dart';
+import '../../repositories/randon_user_repository.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -20,21 +22,14 @@ class _MainPage extends State<MainPage> {
   bool _isSearching = false;
   UserRepository userRepository = UserRepository();
   UserModel? user;
-  bool _isLoading = false;
 
   TextEditingController _searchController = TextEditingController();
-  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     _loadUser();
     _loadPexels();
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels == 0 && !_isLoading) {
-        _loadUser();
-        _loadPexels();
-      }
-    });
+
     super.initState();
   }
 
@@ -107,6 +102,7 @@ class _MainPage extends State<MainPage> {
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
+                          fontFamily: "Roboto",
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -153,7 +149,7 @@ class _MainPage extends State<MainPage> {
                                   maxLines: 1,
                                   style: const TextStyle(
                                     fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontFamily: "Roboto",
                                   ),
                                 ),
                                 Text(
@@ -161,7 +157,9 @@ class _MainPage extends State<MainPage> {
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                    fontFamily: "Roboto",
                                   ),
                                 ),
                               ],
@@ -192,6 +190,8 @@ class _MainPage extends State<MainPage> {
                       'Log out',
                       style: TextStyle(
                         fontSize: 14,
+                        color: Colors.black,
+                        fontFamily: "Roboto",
                       ),
                     ),
                   ],
@@ -210,68 +210,79 @@ class _MainPage extends State<MainPage> {
                     style: TextStyle(fontSize: 22, fontFamily: "Roboto"),
                   ),
                 )
-              : ListView.builder(
-                  controller: _scrollController,
-                  itemCount: _groupedPhotos!.length,
-                  itemBuilder: (context, index) {
-                    final section = _groupedPhotos![index];
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10),
-                          child: Text(
-                            section.letter,
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color.fromARGB(254, 0, 97, 166)),
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    await Future.delayed(
+                      const Duration(seconds: 1),
+                    );
+                    //_loadUser();
+                    _loadPexels();
+                    setState(() {});
+                  },
+                  child: ListView.builder(
+                    itemCount: _groupedPhotos!.length,
+                    itemBuilder: (context, index) {
+                      final section = _groupedPhotos![index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: Text(
+                              section.letter,
+                              style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color.fromARGB(254, 0, 97, 166)),
+                            ),
                           ),
-                        ),
-                        ...section.photos.map((photo) {
-                          return Padding(
-                            padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 8.0),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                border:
-                                    Border.all(color: Colors.grey, width: 1),
-                              ),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.all(8.0),
-                                leading: ClipRRect(
+                          ...section.photos.map((photo) {
+                            return Padding(
+                              padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
+                              child: Container(
+                                margin:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: CachedNetworkImage(
-                                    imageUrl: photo.url,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => const Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2.0),
+                                  border:
+                                      Border.all(color: Colors.grey, width: 1),
+                                ),
+                                child: ListTile(
+                                  contentPadding: EdgeInsets.all(8.0),
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: CachedNetworkImage(
+                                      imageUrl: photo.url,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      placeholder: (context, url) =>
+                                          const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2.0),
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(
+                                        Icons.error,
+                                        size: 20,
+                                        color: Colors.red,
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(
-                                      Icons.error,
-                                      size: 20,
-                                      color: Colors.red,
-                                    ),
                                   ),
+                                  title: Text(photo.namePhotographer),
+                                  subtitle: Text(photo.description),
                                 ),
-                                title: Text(photo.namePhotographer),
-                                subtitle: Text(photo.description),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  },
+                            );
+                          }).toList(),
+                        ],
+                      );
+                    },
+                  ),
                 ),
     );
   }
@@ -282,17 +293,13 @@ class _MainPage extends State<MainPage> {
   }
 
   Future<void> _loadPexels() async {
-    setState(() {
-      _isLoading = true; // Показываем индикатор загрузки
-    });
+    setState(() {});
     _photosFuture = await PexelsRepository().getPexels();
     _photosFuture
         ?.sort((a, b) => a.namePhotographer.compareTo(b.namePhotographer));
 
     _groupedPhotos = _groupPhotos(_photosFuture!);
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() {});
   }
 
   List<SectionModel> _groupPhotos(List<PexelsModel> photos) {
